@@ -17,34 +17,48 @@ def verificar_webhook():
     return "Error de verificación", 403
 
 @app.route("/webhook", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def recibir_mensaje():
     data = request.json
+    print("DATOS RECIBIDOS DE META:", data) # Esto saldrá en los Logs de Render
+    
     try:
-        mensaje = data['entry'][0]['changes'][0]['value']['messages'][0]
-        numero_remitente = mensaje['from']
-        tipo_mensaje = mensaje['type']
-        
-        # Si el usuario escribe texto plano
-        if tipo_mensaje == "text":
-            texto_usuario = mensaje['text']['body'].lower()
-            if "hola" in texto_usuario:
-                enviar_menu_opciones(numero_remitente)
-            else:
-                enviar_mensaje_texto(numero_remitente, "Escribe 'hola' para ver el menú principal.")
+        # Verificamos si realmente viene un mensaje de texto o interactivo
+        entry = data.get('entry', [])
+        for ent in entry:
+            changes = ent.get('changes', [])
+            for change in changes:
+                value = change.get('value', {})
                 
-        # Si el usuario presiona un botón del menú
-        elif tipo_mensaje == "interactive":
-            opcion_seleccionada = mensaje['interactive']['button_reply']['id']
-            
-            if opcion_seleccionada == "opcion_1":
-                enviar_mensaje_texto(numero_remitente, "Has elegido la opción 1: Ventas. ¿En qué podemos colaborarte?")
-            elif opcion_seleccionada == "opcion_2":
-                enviar_mensaje_texto(numero_remitente, "Has elegido la opción 2: Soporte Técnico.")
-            elif opcion_seleccionada == "opcion_3":
-                enviar_mensaje_texto(numero_remitente, "Has elegido la opción 3: Hablar con un asesor.")
+                # Si no hay mensajes (ej: estados de visto), ignoramos para que no falle
+                if 'messages' not in value:
+                    return jsonify({"status": "ignored"}), 200
                 
+                mensaje = value['messages'][0]
+                numero_remitente = mensaje['from']
+                tipo_mensaje = mensaje['type']
+                
+                # Si el usuario escribe texto plano
+                if tipo_mensaje == "text":
+                    texto_usuario = mensaje['text']['body'].lower()
+                    if "hola" in texto_usuario:
+                        enviar_menu_opciones(numero_remitente)
+                    else:
+                        enviar_mensaje_texto(numero_remitente, "Escribe 'hola' para ver el menú principal.")
+                        
+                # Si el usuario presiona un botón del menú
+                elif tipo_mensaje == "interactive":
+                    opcion_seleccionada = mensaje['interactive']['button_reply']['id']
+                    
+                    if opcion_seleccionada == "opcion_1":
+                        enviar_mensaje_texto(numero_remitente, "Has elegido la opción 1: Ventas. ¿En qué podemos colaborarte?")
+                    elif opcion_seleccionada == "opcion_2":
+                        enviar_mensaje_texto(numero_remitente, "Has elegido la opción 2: Soporte Técnico.")
+                    elif opcion_seleccionada == "opcion_3":
+                        enviar_mensaje_texto(numero_remitente, "Has elegido la opción 3: Hablar con un asesor.")
+                        
     except Exception as e:
-        print("Esperando mensajes...", e)
+        print("Error procesando el mensaje:", e)
 
     return jsonify({"status": "success"}), 200
 
